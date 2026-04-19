@@ -111,10 +111,10 @@ int main(void) {
     
     // Initialize player
     Player player = {
-        .position = (Vector2){ 150, 150 },
+        .position = (Vector2){ 80, 80 },
         .angle = 0.0f,
         .speed = 200.0f,
-        .turnSpeed = 3.0f
+        .turnSpeed = 4.0f
     };
 
     SetTargetFPS(60);
