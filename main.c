@@ -50,8 +50,17 @@ void DrawWorldMap(void) {
     }
 }
 
+bool IsWallAt(float x, float y) {
+    int mapX = (int)(x / CELL_WIDTH);
+    int mapY = (int)(y / CELL_HEIGHT);
+
+    if (mapX < 0 || mapX >= COLS || mapY < 0 || mapY >= ROWS) return true;
+    
+    return (map[mapY][mapX] == 1);
+}
+
 void UpdatePlayer(Player *p) {
-    float deltaTime = GetFrameTime();
+float deltaTime = GetFrameTime();
 
     // Turning controls
     if (IsKeyDown(KEY_LEFT))  p->angle -= p->turnSpeed * deltaTime;
@@ -62,9 +71,17 @@ void UpdatePlayer(Player *p) {
     if (IsKeyDown(KEY_UP)) moveStep = p->speed * deltaTime;
     if (IsKeyDown(KEY_DOWN)) moveStep = -p->speed * deltaTime;
 
-    // Update position
-    p->position.x += cosf(p->angle) * moveStep;
-    p->position.y += sinf(p->angle) * moveStep;
+    // Calculate potential next coordinates
+    float nextX = p->position.x + cosf(p->angle) * moveStep;
+    float nextY = p->position.y + sinf(p->angle) * moveStep;
+
+    // Check X and Y separately to allow wall sliding
+    if (!IsWallAt(nextX, p->position.y)) {
+        p->position.x = nextX;
+    }
+    if (!IsWallAt(p->position.x, nextY)) {
+        p->position.y = nextY;
+    }
 }
 
 void DrawPlayer(Player p) {
