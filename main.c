@@ -14,9 +14,13 @@
 #define CELL_WIDTH (SCREEN_WIDTH / COLS)
 #define CELL_HEIGHT (SCREEN_HEIGHT / ROWS)
 
+// Raycasting settings
+#define FOV 60.0f
+#define NUM_RAYS 60
+
 // Map
 int map[ROWS][COLS] = {
-{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
     {1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
     {1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1},
     {1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1},
@@ -70,7 +74,7 @@ bool IsWallAt(float x, float y) {
 }
 
 void UpdatePlayer(Player *p) {
-float deltaTime = GetFrameTime();
+    float deltaTime = GetFrameTime();
 
     // Turning controls
     if (IsKeyDown(KEY_LEFT))  p->angle -= p->turnSpeed * deltaTime;
@@ -94,6 +98,28 @@ float deltaTime = GetFrameTime();
     }
 }
 
+void DrawRays(Player p) {
+    float startAngle = p.angle - (FOV * PI / 180.0f) / 2.0f;
+    float step = (FOV * PI / 180.0f) / (float)NUM_RAYS;
+
+    for (int i = 0; i <= NUM_RAYS; i++) {
+        float rayAngle = startAngle + (i * step);
+        float rayX = p.position.x;
+        float rayY = p.position.y;
+        
+        float dx = cosf(rayAngle);
+        float dy = sinf(rayAngle);
+
+        // Cast ray until it hits a wall
+        while (!IsWallAt(rayX, rayY)) {
+            rayX += dx;
+            rayY += dy;
+        }
+
+        DrawLineV(p.position, (Vector2){ rayX, rayY }, Fade(YELLOW, 0.4f));
+    }
+}
+
 void DrawPlayer(Player p) {
     DrawCircleV(p.position, 8, RED);
     
@@ -107,7 +133,7 @@ void DrawPlayer(Player p) {
 
 // --- MAIN ---
 int main(void) {
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Map");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "2D Raycasting");
     
     // Initialize player
     Player player = {
@@ -127,6 +153,7 @@ int main(void) {
             ClearBackground(BLACK);
 
             DrawWorldMap();
+            DrawRays(player);
             DrawPlayer(player);
 
         EndDrawing();
