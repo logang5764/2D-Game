@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h> 
 #include "raylib.h"
 
 // Screen dimensions
@@ -27,6 +28,14 @@ int map[ROWS][COLS] = {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 };
 
+// Player Structure
+typedef struct Player {
+    Vector2 position;
+    float angle;      
+    float speed;
+    float turnSpeed;
+} Player;
+
 // --- FUNCTIONS ---
 void DrawWorldMap(void) {
     for (int y = 0; y < ROWS; y++) {
@@ -41,16 +50,57 @@ void DrawWorldMap(void) {
     }
 }
 
+void UpdatePlayer(Player *p) {
+    float deltaTime = GetFrameTime();
+
+    // Turning controls
+    if (IsKeyDown(KEY_LEFT))  p->angle -= p->turnSpeed * deltaTime;
+    if (IsKeyDown(KEY_RIGHT)) p->angle += p->turnSpeed * deltaTime;
+
+    // Movement step calculation
+    float moveStep = 0;
+    if (IsKeyDown(KEY_UP)) moveStep = p->speed * deltaTime;
+    if (IsKeyDown(KEY_DOWN)) moveStep = -p->speed * deltaTime;
+
+    // Update position
+    p->position.x += cosf(p->angle) * moveStep;
+    p->position.y += sinf(p->angle) * moveStep;
+}
+
+void DrawPlayer(Player p) {
+    DrawCircleV(p.position, 8, RED);
+    
+    // Draw direction line
+    Vector2 dirEnd = {
+        p.position.x + cosf(p.angle) * 30,
+        p.position.y + sinf(p.angle) * 30
+    };
+    DrawLineV(p.position, dirEnd, YELLOW);
+}
+
 // --- MAIN ---
 int main(void) {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Map");
+    
+    // Initialize player
+    Player player = {
+        .position = (Vector2){ 150, 150 },
+        .angle = 0.0f,
+        .speed = 200.0f,
+        .turnSpeed = 3.0f
+    };
+
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
+        // Update
+        UpdatePlayer(&player);
+
         BeginDrawing();
             ClearBackground(BLACK);
 
             DrawWorldMap();
+            DrawPlayer(player);
 
         EndDrawing();
     }
