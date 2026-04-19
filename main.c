@@ -14,9 +14,13 @@
 #define CELL_WIDTH (SCREEN_WIDTH / COLS)
 #define CELL_HEIGHT (SCREEN_HEIGHT / ROWS)
 
+// Raycasting settings
+#define FOV 60.0f
+#define NUM_RAYS 125
+
 // Map
 int map[ROWS][COLS] = {
-{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
     {1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
     {1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1},
     {1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1},
@@ -47,19 +51,6 @@ typedef struct Player {
 } Player;
 
 // --- FUNCTIONS ---
-void DrawWorldMap(void) {
-    for (int y = 0; y < ROWS; y++) {
-        for (int x = 0; x < COLS; x++) {
-            int posX = x * CELL_WIDTH;
-            int posY = y * CELL_HEIGHT;
-
-            Color tileColor = (map[y][x] == 1) ? DARKGRAY : BLACK;
-
-            DrawRectangle(posX, posY, CELL_WIDTH, CELL_HEIGHT, tileColor);
-        }
-    }
-}
-
 bool IsWallAt(float x, float y) {
     int mapX = (int)(x / CELL_WIDTH);
     int mapY = (int)(y / CELL_HEIGHT);
@@ -70,9 +61,9 @@ bool IsWallAt(float x, float y) {
 }
 
 void UpdatePlayer(Player *p) {
-float deltaTime = GetFrameTime();
+    float deltaTime = GetFrameTime();
 
-    // Turning controls
+    // Turning controls 
     if (IsKeyDown(KEY_LEFT))  p->angle -= p->turnSpeed * deltaTime;
     if (IsKeyDown(KEY_RIGHT)) p->angle += p->turnSpeed * deltaTime;
 
@@ -81,28 +72,51 @@ float deltaTime = GetFrameTime();
     if (IsKeyDown(KEY_UP)) moveStep = p->speed * deltaTime;
     if (IsKeyDown(KEY_DOWN)) moveStep = -p->speed * deltaTime;
 
-    // Calculate potential next coordinates
+    // Calculate potential next coordinates 
     float nextX = p->position.x + cosf(p->angle) * moveStep;
     float nextY = p->position.y + sinf(p->angle) * moveStep;
 
     // Check X and Y separately to allow wall sliding
-    if (!IsWallAt(nextX, p->position.y)) {
-        p->position.x = nextX;
-    }
-    if (!IsWallAt(p->position.x, nextY)) {
-        p->position.y = nextY;
-    }
+    if (!IsWallAt(nextX, p->position.y)) p->position.x = nextX;
+    if (!IsWallAt(p->position.x, nextY)) p->position.y = nextY;
 }
 
-void DrawPlayer(Player p) {
-    DrawCircleV(p.position, 8, RED);
-    
-    // Draw direction line
-    Vector2 dirEnd = {
-        p.position.x + cosf(p.angle) * 30,
-        p.position.y + sinf(p.angle) * 30
-    };
-    DrawLineV(p.position, dirEnd, YELLOW);
+void Draw3DView(Player p) {
+    float startAngle = p.angle - (FOV * PI / 180.0f) / 2.0f;
+    float step = (FOV * PI / 180.0f) / (float)NUM_RAYS;
+    float stripWidth = (float)SCREEN_WIDTH / NUM_RAYS;
+
+    for (int i = 0; i < NUM_RAYS; i++) {
+        float rayAngle = startAngle + (i * step);
+        float rayX = p.position.x;
+        float rayY = p.position.y;
+        
+        float dx = cosf(rayAngle);
+        float dy = sinf(rayAngle);
+
+        // Raycasting
+        while (!IsWallAt(rayX, rayY)) {
+            rayX += dx * 0.5f; 
+            rayY += dy * 0.5f;
+        }
+
+        // Distance and Fisheye Correction
+        float distance = sqrtf(powf(rayX - p.position.x, 2) + powf(rayY - p.position.y, 2));
+        distance *= cosf(rayAngle - p.angle);
+
+        // Calculate height of wall strip
+        float wallHeight = (CELL_HEIGHT * SCREEN_HEIGHT) / distance;
+
+        // Center the wall vertically
+        float drawStart = (SCREEN_HEIGHT / 2.0f) - (wallHeight / 2.0f);
+
+        // Shading
+        float brightness = 1.0f - (distance / (SCREEN_WIDTH * 0.8f));
+        if (brightness < 0) brightness = 0;
+        Color wallColor = ColorBrightness(DARKGRAY, brightness - 0.2f);
+
+        DrawRectangle(i * stripWidth, drawStart, stripWidth + 1, wallHeight, wallColor);
+    }
 }
 
 // --- MAIN ---
@@ -113,8 +127,8 @@ int main(void) {
     Player player = {
         .position = (Vector2){ 80, 80 },
         .angle = 0.0f,
-        .speed = 200.0f,
-        .turnSpeed = 4.0f
+        .speed = 125.0f,
+        .turnSpeed = 3.0f
     };
 
     SetTargetFPS(60);
@@ -126,8 +140,8 @@ int main(void) {
         BeginDrawing();
             ClearBackground(BLACK);
 
-            DrawWorldMap();
-            DrawPlayer(player);
+            // Draw 3D Walls
+            Draw3DView(player);
 
         EndDrawing();
     }
